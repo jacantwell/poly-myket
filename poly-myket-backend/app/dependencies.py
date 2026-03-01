@@ -17,16 +17,28 @@ async def get_current_user(
 ) -> User:
     claims = credentials.decoded
     clerk_id: str = claims["sub"]
-    email: str = claims.get("email", "")
-    name: str = claims.get("name", "")
+    email: str = claims.get("email") or ""
+    name: str = claims.get("name") or ""
 
     result = await db.execute(select(User).where(User.clerk_id == clerk_id))
     user = result.scalar_one_or_none()
 
     if user is None:
-        user = User(clerk_id=clerk_id, email=email, display_name=name)
+        user = User(clerk_id=clerk_id, email=email or clerk_id, display_name=name)
         db.add(user)
         await db.commit()
         await db.refresh(user)
+    else:
+        # Update email/name if they were missing before and are now available
+        changed = False
+        if email and (not user.email or user.email == user.clerk_id):
+            user.email = email
+            changed = True
+        if name and not user.display_name:
+            user.display_name = name
+            changed = True
+        if changed:
+            await db.commit()
+            await db.refresh(user)
 
     return user
