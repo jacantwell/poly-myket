@@ -1,0 +1,25 @@
+[project]
+name = "poly-myket-backend"
+version = "0.1.0"
+description = "Poly-Myket social betting backend"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]",
+    "sqlalchemy>=2.0",
+    "asyncpg",
+    "psycopg2-binary",
+    "alembic",
+    "pydantic-settings",
+    "fastapi-clerk-auth",
+    "aiosqlite>=0.22.1",
+]
+
+[project.scripts]
+app = "app.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
