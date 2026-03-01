@@ -10,7 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!isLoaded) {
     return (
       <div className="flex min-h-screen flex-col">
-        <div className="border-b">
+        <div className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
           <div className="container mx-auto flex h-14 items-center justify-between px-4">
             <Skeleton className="h-6 w-24" />
             <Skeleton className="h-8 w-8 rounded-full" />
