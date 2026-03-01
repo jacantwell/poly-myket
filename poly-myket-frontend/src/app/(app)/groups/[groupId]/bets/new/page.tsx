@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { MemberSelect } from "@/components/member-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -125,21 +126,14 @@ export default function NewBetPage({
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="subject">Subject</Label>
-              <select
-                id="subject"
+              <Label>Subject</Label>
+              <MemberSelect
+                members={otherMembers}
                 value={subjectId}
-                onChange={(e) => setSubjectId(e.target.value)}
+                onValueChange={setSubjectId}
+                placeholder="Select a member..."
                 disabled={isSubmitting}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <option value="">Select a member...</option>
-                {otherMembers.map((m) => (
-                  <option key={m.user_id} value={m.user_id}>
-                    {m.user?.display_name ?? m.user_id}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div className="space-y-2">

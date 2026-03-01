@@ -109,3 +109,37 @@ export interface AdjustCreditsRequest {
 export interface PromoteMemberRequest {
   member_id: string;
 }
+
+// Profile types
+
+export interface ProfileMembership {
+  id: string;
+  group_id: string;
+  group_name: string;
+  credit_balance: number;
+  role: GroupRole;
+}
+
+export interface ProfileBet {
+  id: string;
+  group_id: string;
+  group_name: string;
+  description: string;
+  status: BetStatus;
+  resolved_at: string | null;
+}
+
+export interface ProfileWager {
+  id: string;
+  bet_id: string;
+  amount: number;
+  side: WagerSide;
+  created_at: string;
+  bet: ProfileBet;
+}
+
+export interface UserProfile {
+  user: User;
+  memberships: ProfileMembership[];
+  wagers: ProfileWager[];
+}

@@ -1,0 +1,25 @@
+name: Run DB Migrations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "poly-myket-backend/alembic/**"
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: poly-myket-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - run: uv sync --frozen
+
+      - run: uv run alembic upgrade head
+        env:
+          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}

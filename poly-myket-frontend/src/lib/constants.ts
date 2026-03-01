@@ -11,6 +11,7 @@ export const ROUTES = {
   newBet: (groupId: string) => `/groups/${groupId}/bets/new`,
   bet: (groupId: string, betId: string) =>
     `/groups/${groupId}/bets/${betId}`,
+  profile: "/profile",
 } as const;
 
 export const BET_STATUS_LABELS: Record<BetStatus, string> = {

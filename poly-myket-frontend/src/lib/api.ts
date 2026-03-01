@@ -12,6 +12,7 @@ import type {
   PromoteMemberRequest,
   ResolveBetRequest,
   User,
+  UserProfile,
   Wager,
 } from "./types";
 
@@ -64,6 +65,8 @@ async function request<T>(
 export const api = {
   // Users
   getMe: () => request<User>("/users/me"),
+
+  getMyProfile: () => request<UserProfile>("/users/me/profile"),
 
   updateMe: (data: { image_url?: string }) =>
     request<User>("/users/me", {

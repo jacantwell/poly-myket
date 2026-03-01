@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
+import { User as UserIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +39,12 @@ export function AppHeader() {
           ))}
         </nav>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href={ROUTES.profile}>
+              <UserIcon className="h-4 w-4" />
+            </Link>
+          </Button>
           <UserButton />
         </div>
       </div>
