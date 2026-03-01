@@ -12,6 +12,7 @@ dependencies = [
     "pydantic-settings",
     "fastapi-clerk-auth",
     "aiosqlite>=0.22.1",
+    "greenlet>=3.3.2",
 ]
 
 [project.scripts]

@@ -1,6 +1,7 @@
 import secrets
 import string
 import uuid
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.models.credit_adjustment import CreditAdjustment
 from app.models.group import Group, GroupMember, GroupRole
 from app.models.user import User
 from app.schemas.group import (
@@ -34,6 +36,22 @@ INVITE_CODE_LENGTH = 8
 
 def _generate_invite_code() -> str:
     return "".join(secrets.choice(INVITE_CODE_CHARS) for _ in range(INVITE_CODE_LENGTH))
+
+
+async def _get_membership(
+    db: AsyncSession, user_id: uuid.UUID, group_id: uuid.UUID, *, require_admin: bool = False
+) -> GroupMember:
+    result = await db.execute(
+        select(GroupMember).where(
+            and_(GroupMember.group_id == group_id, GroupMember.user_id == user_id)
+        )
+    )
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a member of this group")
+    if require_admin and member.role != GroupRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin role required")
+    return member
 
 
 @router.post("", response_model=GroupRead)
@@ -102,19 +120,64 @@ async def get_group(group_id: uuid.UUID, user: CurrentUser, db: DB):
 async def adjust_credits(
     group_id: uuid.UUID, body: CreditAdjustmentCreate, user: CurrentUser, db: DB
 ):
-    # TODO: verify user is admin of group, create credit adjustment, update member balance
-    raise NotImplementedError
+    await _get_membership(db, user.id, group_id, require_admin=True)
+
+    # Fetch target member and confirm they belong to this group
+    target_result = await db.execute(
+        select(GroupMember).where(
+            and_(GroupMember.id == body.member_id, GroupMember.group_id == group_id)
+        )
+    )
+    target_member = target_result.scalar_one_or_none()
+    if not target_member:
+        raise HTTPException(status_code=404, detail="Member not found in this group")
+
+    target_member.credit_balance = Decimal(str(target_member.credit_balance)) + Decimal(
+        str(body.amount)
+    )
+
+    adjustment = CreditAdjustment(
+        member_id=body.member_id,
+        adjusted_by=user.id,
+        amount=body.amount,
+        reason=body.reason,
+    )
+    db.add(adjustment)
+    await db.commit()
+    await db.refresh(adjustment)
+    return adjustment
 
 
 @router.get("/{group_id}/credit-adjustments", response_model=list[CreditAdjustmentRead])
 async def list_credit_adjustments(group_id: uuid.UUID, user: CurrentUser, db: DB):
-    # TODO: verify user is member of group, return credit adjustments
-    raise NotImplementedError
+    await _get_membership(db, user.id, group_id)
+
+    result = await db.execute(
+        select(CreditAdjustment)
+        .join(GroupMember, CreditAdjustment.member_id == GroupMember.id)
+        .where(GroupMember.group_id == group_id)
+        .order_by(CreditAdjustment.created_at.desc())
+    )
+    return result.scalars().all()
 
 
 @router.post("/{group_id}/promote", response_model=MemberRead)
 async def promote_member(
     group_id: uuid.UUID, body: PromoteMember, user: CurrentUser, db: DB
 ):
-    # TODO: verify user is admin of group, promote target member to admin
-    raise NotImplementedError
+    await _get_membership(db, user.id, group_id, require_admin=True)
+
+    # Fetch target member
+    target_result = await db.execute(
+        select(GroupMember)
+        .options(selectinload(GroupMember.user))
+        .where(and_(GroupMember.id == body.member_id, GroupMember.group_id == group_id))
+    )
+    target_member = target_result.scalar_one_or_none()
+    if not target_member:
+        raise HTTPException(status_code=404, detail="Member not found in this group")
+
+    target_member.role = GroupRole.ADMIN
+    await db.commit()
+    await db.refresh(target_member)
+    return target_member

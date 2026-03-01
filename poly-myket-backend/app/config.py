@@ -1,3 +1,4 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,6 +9,15 @@ class Settings(BaseSettings):
     database_url_direct: str = "sqlite:///./dev.db"
     clerk_jwks_url: str = ""
     frontend_url: str = "http://localhost:3000"
+
+    @model_validator(mode="after")
+    def _ensure_async_driver(self) -> "Settings":
+        """Rewrite postgresql:// to postgresql+asyncpg:// for the async engine."""
+        if self.database_url.startswith("postgresql://"):
+            self.database_url = self.database_url.replace(
+                "postgresql://", "postgresql+asyncpg://", 1
+            )
+        return self
 
 
 settings = Settings()
