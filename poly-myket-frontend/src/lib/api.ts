@@ -65,6 +65,12 @@ export const api = {
   // Users
   getMe: () => request<User>("/users/me"),
 
+  updateMe: (data: { image_url?: string }) =>
+    request<User>("/users/me", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
   // Groups
   getGroups: () => request<Group[]>("/groups"),
 
@@ -84,6 +90,8 @@ export const api = {
 
   // Bets
   getBets: (groupId: string) => request<Bet[]>(`/groups/${groupId}/bets`),
+
+  getBet: (betId: string) => request<Bet>(`/bets/${betId}`),
 
   createBet: (groupId: string, data: CreateBetRequest) =>
     request<Bet>(`/groups/${groupId}/bets`, {

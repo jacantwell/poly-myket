@@ -71,8 +71,12 @@ bun install   # install deps (bun preferred, npm works too)
 make frontend # dev server on port 6969 (from repo root)
 npm run dev   # dev server on port 3000 (default)
 npm run build # production build
-npm run lint  # ESLint
+npm run lint      # ESLint
+npm run typecheck  # TypeScript type checking
+make lint-frontend # both typecheck + ESLint (from repo root)
 ```
+
+**Always use `make lint-frontend` from the repo root to lint/typecheck the frontend.** Do not use `npx tsc` directly — it breaks due to nvm shell interference.
 
 ### Frontend Layout
 

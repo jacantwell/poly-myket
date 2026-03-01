@@ -102,28 +102,13 @@ export default function GroupsPage() {
               </div>
             </div>
           ) : (
-            <>
-              {state.groups.map((group) => (
-                <GroupBetsSection
-                  key={group.id}
-                  group={group}
-                  bets={state.betsByGroup[group.id] ?? []}
-                />
-              ))}
-
-              {/* All groups exist but none have bets */}
-              {Object.values(state.betsByGroup).every(
-                (bets) => bets.length === 0,
-              ) && (
-                <div className="flex flex-col items-center gap-4 py-16 text-center">
-                  <h2 className="text-lg font-semibold">No markets yet</h2>
-                  <p className="max-w-sm text-muted-foreground">
-                    Your groups don&apos;t have any bets yet. Create the first
-                    market to get things started!
-                  </p>
-                </div>
-              )}
-            </>
+            state.groups.map((group) => (
+              <GroupBetsSection
+                key={group.id}
+                group={group}
+                bets={state.betsByGroup[group.id] ?? []}
+              />
+            ))
           )}
         </>
       )}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UserAvatar } from "@/components/user-avatar";
 import { ROUTES, BET_STATUS_LABELS, BET_STATUS_VARIANT } from "@/lib/constants";
 import { calculateOdds, formatCredits } from "@/lib/bet-utils";
 import type { Bet } from "@/lib/types";
@@ -13,7 +14,6 @@ interface BetCardProps {
 
 export function BetCard({ bet }: BetCardProps) {
   const odds = calculateOdds(bet.wagers);
-  const subjectInitial = bet.subject?.display_name?.charAt(0).toUpperCase() ?? "?";
   const isOpen = bet.status === "open";
   const majorityYes = odds.yesProbability >= 50;
 
@@ -25,9 +25,7 @@ export function BetCard({ bet }: BetCardProps) {
       {/* Top: avatar + description + status badge */}
       <div className="mb-3">
         <div className="flex items-start gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
-            {subjectInitial}
-          </div>
+          <UserAvatar user={bet.subject} />
           <p className="line-clamp-3 text-sm font-medium leading-snug">
             {bet.description}
           </p>

@@ -93,6 +93,25 @@ async def list_bets(group_id: uuid.UUID, user: CurrentUser, db: DB):
     return result.scalars().all()
 
 
+@router.get("/bets/{bet_id}", response_model=BetRead)
+async def get_bet(bet_id: uuid.UUID, user: CurrentUser, db: DB):
+    result = await db.execute(
+        select(Bet)
+        .options(
+            selectinload(Bet.creator),
+            selectinload(Bet.subject),
+            selectinload(Bet.wagers).selectinload(Wager.user),
+        )
+        .where(Bet.id == bet_id)
+    )
+    bet = result.scalar_one_or_none()
+    if not bet:
+        raise HTTPException(status_code=404, detail="Bet not found")
+
+    await _get_membership(db, user.id, bet.group_id)
+    return bet
+
+
 @router.post("/bets/{bet_id}/resolve", response_model=BetRead)
 async def resolve_bet(bet_id: uuid.UUID, body: BetResolve, user: CurrentUser, db: DB):
     result = await db.execute(
