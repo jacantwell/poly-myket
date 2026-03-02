@@ -4,9 +4,9 @@ import { useCallback, useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { MemberSelect } from "@/components/member-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiClientError } from "@/lib/api";
 import { ROUTES } from "@/lib/constants";
@@ -28,9 +28,9 @@ export default function NewBetPage({
   const router = useRouter();
 
   const [state, setState] = useState<PageState>({ status: "loading" });
-  const [subjectId, setSubjectId] = useState("");
   const [description, setDescription] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [wagerAmount, setWagerAmount] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
 
   const fetchData = useCallback(async () => {
@@ -55,18 +55,20 @@ export default function NewBetPage({
   }, [fetchData]);
 
   const isSubmitting = phase === "submitting";
-  const canSubmit = subjectId && description.trim() && !isSubmitting;
+  const canSubmit =
+    description.trim() && wagerAmount && Number(wagerAmount) > 0 && !isSubmitting;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || state.status !== "loaded") return;
 
     setPhase("submitting");
     try {
       await api.createBet(groupId, {
-        subject_id: subjectId,
+        subject_id: state.currentUser.id,
         description: description.trim(),
         deadline: deadline || undefined,
+        initial_wager_amount: Number(wagerAmount),
       });
       toast.success("Bet created!");
       router.push(ROUTES.group(groupId));
@@ -108,16 +110,17 @@ export default function NewBetPage({
   }
 
   const { group, currentUser } = state;
-  const otherMembers = group.members.filter(
-    (m) => m.user_id !== currentUser.id,
+  const currentMember = group.members.find(
+    (m) => m.user_id === currentUser.id,
   );
+  const creditBalance = currentMember?.credit_balance ?? 0;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Create Bet</h1>
         <p className="text-muted-foreground mt-1">
-          Create a bet on a member of{" "}
+          Make a commitment in{" "}
           <span className="font-medium text-foreground">{group.name}</span>
         </p>
       </div>
@@ -126,27 +129,33 @@ export default function NewBetPage({
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label>Subject</Label>
-              <MemberSelect
-                members={otherMembers}
-                value={subjectId}
-                onValueChange={setSubjectId}
-                placeholder="Select a member..."
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">What will you commit to?</Label>
               <textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isSubmitting}
-                placeholder="What do you bet they'll do?"
+                placeholder="I will..."
                 rows={3}
                 className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="wagerAmount">Your Stake (YES)</Label>
+              <Input
+                id="wagerAmount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={wagerAmount}
+                onChange={(e) => setWagerAmount(e.target.value)}
+                disabled={isSubmitting}
+                placeholder="Amount to stake"
+              />
+              <p className="text-xs text-muted-foreground">
+                Available: {creditBalance.toFixed(0)} credits
+              </p>
             </div>
 
             <div className="space-y-2">

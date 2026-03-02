@@ -96,6 +96,14 @@ export default function BetDetailPage({
   const odds = calculateOdds(bet.wagers);
   const majorityYes = odds.yesProbability >= 50;
   const isOpen = bet.status === "open";
+  const isCreator = currentUser.id === bet.created_by;
+  const isSelfBet = bet.subject_id === bet.created_by;
+  const twoHoursMs = 2 * 60 * 60 * 1000;
+  const betAgeMs = state.status === "loaded"
+    ? new Date().getTime() - new Date(bet.created_at).getTime()
+    : 0;
+  const creatorWindowOpen = isCreator && isSelfBet && betAgeMs < twoHoursMs;
+  const creatorWindowClosed = isCreator && isSelfBet && !creatorWindowOpen;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -116,8 +124,9 @@ export default function BetDetailPage({
             <div className="min-w-0 flex-1">
               <CardTitle>{bet.description}</CardTitle>
               <CardDescription>
-                About {bet.subject?.display_name ?? "Unknown"} · Created by{" "}
-                {bet.creator?.display_name ?? "Unknown"}
+                {isSelfBet
+                  ? `${bet.subject?.display_name ?? "Unknown"}'s self-bet`
+                  : `About ${bet.subject?.display_name ?? "Unknown"} · Created by ${bet.creator?.display_name ?? "Unknown"}`}
               </CardDescription>
             </div>
             <Badge
@@ -176,14 +185,21 @@ export default function BetDetailPage({
           <Separator />
 
           {/* Wager form */}
-          <WagerForm
-            betId={bet.id}
-            isOpen={isOpen}
-            creditBalance={Number(currentMember?.credit_balance ?? 0)}
-            yesPrice={odds.yesPrice}
-            noPrice={odds.noPrice}
-            onWagerPlaced={fetchData}
-          />
+          {creatorWindowClosed && isOpen ? (
+            <p className="text-sm text-muted-foreground">
+              Your betting window has closed. Your stake is locked in.
+            </p>
+          ) : (
+            <WagerForm
+              betId={bet.id}
+              isOpen={isOpen}
+              creditBalance={Number(currentMember?.credit_balance ?? 0)}
+              yesPrice={odds.yesPrice}
+              noPrice={odds.noPrice}
+              onWagerPlaced={fetchData}
+              lockedSide={creatorWindowOpen ? "yes" : undefined}
+            />
+          )}
         </CardContent>
       </Card>
 

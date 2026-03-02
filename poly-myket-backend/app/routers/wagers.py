@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated
 
@@ -12,7 +13,7 @@ from app.dependencies import get_current_user
 from app.models.bet import Bet, BetStatus
 from app.models.group import GroupMember
 from app.models.user import User
-from app.models.wager import Wager
+from app.models.wager import Wager, WagerSide
 from app.schemas.wager import WagerCreate, WagerRead
 
 router = APIRouter(tags=["wagers"])
@@ -31,6 +32,14 @@ async def create_wager(bet_id: uuid.UUID, body: WagerCreate, user: CurrentUser, 
 
     if bet.status != BetStatus.OPEN:
         raise HTTPException(status_code=400, detail="Bet is not open")
+
+    # Creator restrictions (self-bets only): YES-only within 2-hour window, then fully locked out
+    if user.id == bet.created_by and bet.subject_id == bet.created_by:
+        created_at = bet.created_at.replace(tzinfo=UTC) if bet.created_at.tzinfo is None else bet.created_at
+        if datetime.now(UTC) > created_at + timedelta(hours=2):
+            raise HTTPException(status_code=403, detail="Betting window closed")
+        if body.side != WagerSide.YES:
+            raise HTTPException(status_code=403, detail="Creator can only bet YES")
 
     # Verify user is a member of the bet's group
     member_result = await db.execute(

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.models.bet import BetStatus
 from app.schemas.user import UserRead
@@ -13,6 +13,14 @@ class BetCreate(BaseModel):
     subject_id: uuid.UUID
     description: str
     deadline: datetime | None = None
+    initial_wager_amount: float
+
+    @field_validator("initial_wager_amount")
+    @classmethod
+    def wager_must_be_positive(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("Initial wager amount must be greater than 0")
+        return v
 
 
 class BetResolve(BaseModel):

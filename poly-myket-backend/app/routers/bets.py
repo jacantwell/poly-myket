@@ -40,17 +40,21 @@ async def _get_membership(
 
 @router.post("/groups/{group_id}/bets", response_model=BetRead)
 async def create_bet(group_id: uuid.UUID, body: BetCreate, user: CurrentUser, db: DB):
-    await _get_membership(db, user.id, group_id)
+    # Self-bet enforcement: subject must be the current user
+    if body.subject_id != user.id:
+        raise HTTPException(status_code=400, detail="Bets must be about yourself")
 
-    # Verify subject is also a member of the group
-    subject_member = await db.execute(
-        select(GroupMember).where(
-            and_(GroupMember.group_id == group_id, GroupMember.user_id == body.subject_id)
-        )
-    )
-    if not subject_member.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Subject is not a member of this group")
+    member = await _get_membership(db, user.id, group_id)
 
+    # Validate initial wager against balance
+    wager_amount = Decimal(str(body.initial_wager_amount))
+    if wager_amount > Decimal(str(member.credit_balance)):
+        raise HTTPException(status_code=400, detail="Insufficient credits")
+
+    # Deduct credits
+    member.credit_balance = Decimal(str(member.credit_balance)) - wager_amount
+
+    # Create bet
     bet = Bet(
         group_id=group_id,
         created_by=user.id,
@@ -59,6 +63,16 @@ async def create_bet(group_id: uuid.UUID, body: BetCreate, user: CurrentUser, db
         deadline=body.deadline,
     )
     db.add(bet)
+    await db.flush()
+
+    # Create initial YES wager atomically
+    wager = Wager(
+        bet_id=bet.id,
+        user_id=user.id,
+        amount=body.initial_wager_amount,
+        side=WagerSide.YES,
+    )
+    db.add(wager)
     await db.flush()
 
     # Reload with relationships

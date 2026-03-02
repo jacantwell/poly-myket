@@ -90,6 +90,7 @@ export interface CreateBetRequest {
   subject_id: string;
   description: string;
   deadline?: string;
+  initial_wager_amount: number;
 }
 
 export interface ResolveBetRequest {

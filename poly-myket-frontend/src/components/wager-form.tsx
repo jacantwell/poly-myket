@@ -15,6 +15,7 @@ interface WagerFormProps {
   yesPrice: number;
   noPrice: number;
   onWagerPlaced: () => void;
+  lockedSide?: WagerSide;
 }
 
 export function WagerForm({
@@ -24,14 +25,18 @@ export function WagerForm({
   yesPrice,
   noPrice,
   onWagerPlaced,
+  lockedSide,
 }: WagerFormProps) {
-  const [selectedSide, setSelectedSide] = useState<WagerSide | null>(null);
+  const [selectedSide, setSelectedSide] = useState<WagerSide | null>(
+    lockedSide ?? null,
+  );
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
   function toggleSide(side: WagerSide) {
+    if (lockedSide) return;
     if (selectedSide === side) {
       setSelectedSide(null);
       setAmount("");
@@ -64,32 +69,44 @@ export function WagerForm({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          className={
-            selectedSide === "yes"
-              ? "bg-yes text-white hover:bg-yes/90 hover:text-white"
-              : "bg-yes-light text-yes hover:bg-yes hover:text-white"
-          }
-          onClick={() => toggleSide("yes")}
-        >
-          Yes {yesPrice.toFixed(2)}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className={
-            selectedSide === "no"
-              ? "bg-no text-white hover:bg-no/90 hover:text-white"
-              : "bg-no-light text-no hover:bg-no hover:text-white"
-          }
-          onClick={() => toggleSide("no")}
-        >
-          No {noPrice.toFixed(2)}
-        </Button>
-      </div>
+      {lockedSide ? (
+        <div className="grid grid-cols-1 gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="bg-yes text-white hover:bg-yes/90 hover:text-white cursor-default"
+          >
+            Yes {yesPrice.toFixed(2)}
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className={
+              selectedSide === "yes"
+                ? "bg-yes text-white hover:bg-yes/90 hover:text-white"
+                : "bg-yes-light text-yes hover:bg-yes hover:text-white"
+            }
+            onClick={() => toggleSide("yes")}
+          >
+            Yes {yesPrice.toFixed(2)}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className={
+              selectedSide === "no"
+                ? "bg-no text-white hover:bg-no/90 hover:text-white"
+                : "bg-no-light text-no hover:bg-no hover:text-white"
+            }
+            onClick={() => toggleSide("no")}
+          >
+            No {noPrice.toFixed(2)}
+          </Button>
+        </div>
+      )}
 
       {selectedSide && (
         <form onSubmit={handleSubmit} className="space-y-2">
