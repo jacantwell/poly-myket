@@ -4,104 +4,85 @@ Social betting app where friends bet on each other's real-life commitments using
 
 ## Project Structure
 
-Monorepo with two independent apps:
+Monorepo with two independent apps — each has its own `CLAUDE.md` with app-specific conventions:
 
-- `poly-myket-backend/` — Python FastAPI API
-- `poly-myket-frontend/` — Next.js 16 TypeScript frontend
+- `poly-myket-backend/` — Python FastAPI API (see `poly-myket-backend/CLAUDE.md`)
+- `poly-myket-frontend/` — Next.js 16 TypeScript frontend (see `poly-myket-frontend/CLAUDE.md`)
 
-## Backend (FastAPI + SQLAlchemy)
-
-### Run
+## Dev Commands (Makefile)
 
 ```bash
-make backend   # uvicorn on port 6767 with hot reload
-make frontend  # next.js on port 6969 with hot reload
-make dev       # runs both concurrently
+make backend        # uvicorn on port 6767 with hot reload
+make frontend       # next.js on port 6969 with hot reload
+make dev            # runs both concurrently
+make migrate        # alembic upgrade head
+make reset-db       # delete dev.db + recreate from migrations
+make lint-frontend  # typecheck + ESLint (always use this, not npx tsc)
 ```
 
-### Dependencies
-
-```bash
-cd poly-myket-backend && uv sync
-```
+## Infrastructure
 
 ### Database
 
-- **Dev**: SQLite (`./dev.db`) — zero config, default when no `DATABASE_URL` set
-- **Prod**: PostgreSQL via `DATABASE_URL` env var (asyncpg)
+- **Dev**: SQLite (`dev.db`) — zero config, default when no `DATABASE_URL` set
+- **Prod**: PostgreSQL (Neon) via `DATABASE_URL` env var (asyncpg)
+- Dual URL design: `DATABASE_URL` (async driver for app) + `DATABASE_URL_DIRECT` (sync driver for Alembic)
 
-### Migrations (Alembic)
+### Auth (Clerk)
 
-```bash
-cd poly-myket-backend
-uv run alembic upgrade head              # apply migrations
-uv run alembic revision --autogenerate -m "description"  # create migration
+```
+User → Google OAuth → Clerk → JWT (RS256) → Frontend getToken() → Authorization: Bearer <jwt> → Backend JWKS verification
 ```
 
-### Backend Layout
+- **Frontend**: `@clerk/nextjs` — `useAuth()`, `useUser()`, `UserButton`, middleware
+- **Backend**: `fastapi-clerk-auth` — validates JWT via Clerk JWKS endpoint
+- **User sync**: First API call auto-creates user in DB from JWT claims (`clerk_id`, `email`, `name`)
+- **Token lifecycle**: Short-lived (~60s), Clerk auto-refreshes, no localStorage
 
-- `app/main.py` — FastAPI app, CORS, router registration
-- `app/config.py` — Pydantic settings (loads `.env`)
-- `app/database.py` — SQLAlchemy async engine/session
-- `app/dependencies.py` — JWT auth dependency (`get_current_user`)
-- `app/models/` — SQLAlchemy ORM models (User, Group, GroupMember, Bet, Wager, CreditAdjustment)
-- `app/schemas/` — Pydantic request/response schemas
-- `app/routers/` — Route handlers (auth, users, groups, bets, wagers)
+### Deployment
 
-### Backend Conventions
+- **Backend**: Vercel Python serverless (`api/index.py` entry point)
+- **Frontend**: Vercel (Next.js auto-detected)
+- **CI/CD**: GitHub Actions runs `alembic upgrade head` on push to `main` when `alembic/**` changes
 
-- Async everywhere — all DB operations use `AsyncSession`
-- UUID primary keys and timestamp mixins on all models (`models/base.py`)
-- Credit amounts use `Numeric(10, 2)`
-- Auth: JWT with HS256 via `python-jose`, Clerk JWKS for verification
-- Dependency injection via FastAPI `Depends` for DB sessions and auth
-- Enums for status fields: `BetStatus`, `WagerSide`, `GroupRole`
+## Data Model
 
-### Backend Env Vars (`.env`)
-
-See `.env.example`. Key vars: `DATABASE_URL`, `DATABASE_URL_DIRECT`, `CLERK_JWKS_URL`, `FRONTEND_URL`
-
-## Frontend (Next.js + TypeScript)
-
-### Run
-
-```bash
-cd poly-myket-frontend
-bun install   # install deps (bun preferred, npm works too)
-make frontend # dev server on port 6969 (from repo root)
-npm run dev   # dev server on port 3000 (default)
-npm run build # production build
-npm run lint      # ESLint
-npm run typecheck  # TypeScript type checking
-make lint-frontend # both typecheck + ESLint (from repo root)
+```
+User (clerk_id, email, display_name, image_url)
+  ├── GroupMember (credit_balance, role: admin|member)
+  │     └── CreditAdjustment (amount, reason, adjusted_by)
+  ├── Bet (description, deadline, status, proof_image_url, created_by, subject_id)
+  │     └── Wager (amount, side: yes|no, user_id)
+  └── Group (name, invite_code, starting_credits)
 ```
 
-**Always use `make lint-frontend` from the repo root to lint/typecheck the frontend.** Do not use `npx tsc` directly — it breaks due to nvm shell interference.
+All tables: UUID primary keys, `created_at`/`updated_at` timestamp mixins. Enums stored as VARCHAR strings for SQLite/PostgreSQL compatibility.
 
-### Frontend Layout
+## Key Business Logic
 
-- `src/app/` — Next.js App Router pages
-  - `(auth)/` — Login/verify pages (unauthenticated layout)
-  - `(app)/` — Protected routes (authenticated layout with header)
-- `src/components/ui/` — ShadCN components (do not edit directly; use `npx shadcn add`)
-- `src/components/layout/` — App layout components
-- `src/lib/api.ts` — Centralized API client with typed methods
-- `src/lib/auth.tsx` — Auth context provider
-- `src/lib/types.ts` — Shared TypeScript interfaces
-- `src/lib/constants.ts` — Route paths, status/role labels
+### Credit System
+- Members start with `group.starting_credits` on join
+- Placing a wager **immediately deducts** credits
+- Resolving distributes the **entire pool** proportionally to winners
+- No winners on the winning side → **all wagers refunded**
+- Cancelling a bet → **refunds all wagers**
+- Admins can manually adjust credits (positive or negative) with a reason
 
-### Frontend Conventions
+### Bet Resolution
+1. `outcome: "success"` → winning side = YES; `"fail"` → winning side = NO
+2. Total pool = sum of all wager amounts
+3. Each winner gets `(their_wager / total_winning_wagers) * total_pool`
+4. All arithmetic uses `Decimal(str(...))` to avoid floating-point drift
 
-- ShadCN/UI with Radix primitives for all UI components (`components.json`: new-york style, lucide icons)
-- Tailwind CSS 4 for styling; `clsx` + `tailwind-merge` for conditional classes
-- Zod for runtime form validation, React Hook Form for form state
-- `"use client"` directive on interactive components
-- Path alias: `@/*` maps to `src/*`
-- Sonner for toast notifications
+### Role-Based Access
+- **Admin**: Resolve/cancel any bet, adjust credits, promote members. Auto-assigned to group creator.
+- **Member**: Create bets, place wagers, view group data. Default role on join.
 
-### Frontend Env Vars (`.env.local`)
+## Environment Variables
 
-See `.env.local.example`. Key var: `NEXT_PUBLIC_API_URL`
+**Backend** (`.env`): `DATABASE_URL`, `DATABASE_URL_DIRECT`, `CLERK_JWKS_URL`, `FRONTEND_URL`
+
+**Frontend** (`.env.local`): `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, Clerk route URLs
 
 ## Testing
 
