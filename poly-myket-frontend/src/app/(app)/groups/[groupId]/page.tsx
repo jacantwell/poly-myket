@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, use } from "react";
 import Link from "next/link";
 import { Copy, Check, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 
 import { BetCard, BetCardSkeleton } from "@/components/bet-card";
 import { UserAvatar } from "@/components/user-avatar";
@@ -153,6 +154,17 @@ export default function GroupDetailPage({
 }
 
 function BetsTab({ bets, groupId }: { bets: Bet[]; groupId: string }) {
+  const [showCompleted, setShowCompleted] = useState(true);
+
+  const activeBets = bets.filter((b) => b.status === "open");
+  const completedBets = bets
+    .filter((b) => b.status !== "open")
+    .sort((a, b) => {
+      const aTime = a.resolved_at ?? a.created_at;
+      const bTime = b.resolved_at ?? b.created_at;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
+    });
+
   if (bets.length === 0) {
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
@@ -168,17 +180,51 @@ function BetsTab({ bets, groupId }: { bets: Bet[]; groupId: string }) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {bets.map((bet) => (
-        <BetCard key={bet.id} bet={bet} />
-      ))}
-      <Link
-        href={ROUTES.newBet(groupId)}
-        className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-4 text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
-      >
-        <Plus className="h-6 w-6" />
-        <span className="text-sm font-medium">New bet</span>
-      </Link>
+    <div className="space-y-6">
+      {/* Active bets */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {activeBets.map((bet) => (
+          <BetCard key={bet.id} bet={bet} />
+        ))}
+        <Link
+          href={ROUTES.newBet(groupId)}
+          className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-4 text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+        >
+          <Plus className="h-6 w-6" />
+          <span className="text-sm font-medium">New bet</span>
+        </Link>
+      </div>
+
+      {/* Completed bets */}
+      {completedBets.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              Completed ({completedBets.length})
+            </h3>
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="show-completed"
+                className="text-sm text-muted-foreground"
+              >
+                Show
+              </label>
+              <Switch
+                id="show-completed"
+                checked={showCompleted}
+                onCheckedChange={setShowCompleted}
+              />
+            </div>
+          </div>
+          {showCompleted && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {completedBets.map((bet) => (
+                <BetCard key={bet.id} bet={bet} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
