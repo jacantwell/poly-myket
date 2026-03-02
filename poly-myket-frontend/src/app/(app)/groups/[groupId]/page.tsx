@@ -58,10 +58,11 @@ export default function GroupDetailPage({
     fetchData();
   }, [fetchData]);
 
-  function copyInviteCode(code: string) {
-    navigator.clipboard.writeText(code);
+  function copyInviteLink(code: string) {
+    const link = `${window.location.origin}${ROUTES.invite(code)}`;
+    navigator.clipboard.writeText(link);
     setCopied(true);
-    toast.success("Invite code copied!");
+    toast.success("Invite link copied!");
     setTimeout(() => setCopied(false), 2000);
   }
 
@@ -105,14 +106,14 @@ export default function GroupDetailPage({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => copyInviteCode(group.invite_code)}
+            onClick={() => copyInviteLink(group.invite_code)}
           >
             {copied ? (
               <Check className="mr-1.5 h-3.5 w-3.5" />
             ) : (
               <Copy className="mr-1.5 h-3.5 w-3.5" />
             )}
-            {group.invite_code}
+            {copied ? "Copied!" : "Invite Link"}
           </Button>
           <Button size="sm" asChild>
             <Link href={ROUTES.newBet(groupId)}>New Bet</Link>
