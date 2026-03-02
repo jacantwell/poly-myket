@@ -118,7 +118,16 @@ Token bridge: `ApiProvider` calls `setTokenGetter(() => getToken())` to wire Cle
 
 ## API Client (`src/lib/api.ts`)
 
-Plain fetch wrapper, no caching/retry. Errors throw `ApiClientError` with `status` and `message`. Routes centralized in `src/lib/constants.ts` (`ROUTES.groups`, `ROUTES.group(id)`, etc.).
+Plain fetch wrapper, no caching/retry. Errors throw `ApiClientError` with `status` and `message`. Routes centralized in `src/lib/constants.ts` (`ROUTES.groups`, `ROUTES.group(id)`, etc.). Includes `updateEmailPreferences()` for toggling notification settings via `PATCH /users/me`.
+
+## Email Preferences UI
+
+Profile page (`profile/page.tsx`) includes an `EmailPreferencesCard` with Switch toggles for:
+- **New bets** (`email_bet_created`) — when someone creates a bet in your group
+- **Wagers on your bets** (`email_wager_placed`) — when someone wagers on your bet
+- **Bet results** (`email_bet_resolved`) — when a bet you wagered on is resolved
+
+Uses optimistic toggling: updates state immediately, reverts on API error. Placed between "Credit Balances" and "Wager History" cards.
 
 ## Testing
 

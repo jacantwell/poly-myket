@@ -48,7 +48,7 @@ User → Google OAuth → Clerk → JWT (RS256) → Frontend getToken() → Auth
 ## Data Model
 
 ```
-User (clerk_id, email, display_name, image_url)
+User (clerk_id, email, display_name, image_url, email_bet_created, email_wager_placed, email_bet_resolved)
   ├── GroupMember (credit_balance, role: admin|member)
   │     └── CreditAdjustment (amount, reason, adjusted_by)
   ├── Bet (description, deadline, status, proof_image_url, created_by, subject_id)
@@ -74,13 +74,21 @@ All tables: UUID primary keys, `created_at`/`updated_at` timestamp mixins. Enums
 3. Each winner gets `(their_wager / total_winning_wagers) * total_pool`
 4. All arithmetic uses `Decimal(str(...))` to avoid floating-point drift
 
+### Email Notifications (Resend)
+- Sent from the backend after key events; silently skipped when `RESEND_API_KEY` is not set (safe for local dev)
+- **Bet created** → all group members except the creator (`email_bet_created` pref)
+- **Wager placed** → the bet creator, unless wagerer = creator (`email_wager_placed` pref)
+- **Bet resolved** → all users who wagered, deduplicated, with win/loss/refund messaging (`email_bet_resolved` pref)
+- All preferences default to `True` (opt-in by default); toggled via `PATCH /users/me` and the profile page
+- Email failures are caught and logged — they never break the main operation
+
 ### Role-Based Access
 - **Admin**: Resolve/cancel any bet, adjust credits, promote members. Auto-assigned to group creator.
 - **Member**: Create bets, place wagers, view group data. Default role on join.
 
 ## Environment Variables
 
-**Backend** (`.env`): `DATABASE_URL`, `DATABASE_URL_DIRECT`, `CLERK_JWKS_URL`, `FRONTEND_URL`
+**Backend** (`.env`): `DATABASE_URL`, `DATABASE_URL_DIRECT`, `CLERK_JWKS_URL`, `FRONTEND_URL`, `RESEND_API_KEY`, `EMAIL_FROM`
 
 **Frontend** (`.env.local`): `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, Clerk route URLs
 

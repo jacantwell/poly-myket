@@ -5,6 +5,9 @@ export interface User {
   email: string;
   display_name: string;
   image_url: string | null;
+  email_bet_created: boolean;
+  email_wager_placed: boolean;
+  email_bet_resolved: boolean;
   created_at: string;
 }
 

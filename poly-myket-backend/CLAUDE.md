@@ -27,6 +27,8 @@ app/
 │   └── credit_adjustment.py
 ├── schemas/             # Pydantic request/response schemas
 │   ├── user.py, group.py, bet.py, wager.py
+├── services/
+│   └── email.py         # Resend email notifications (bet created, wager placed, bet resolved)
 └── routers/             # Route handlers
     ├── users.py, groups.py, bets.py, wagers.py
 ```
@@ -89,9 +91,26 @@ All endpoints except `GET /` (health check) require Clerk JWT.
 
 Error responses: `{"detail": "message"}` with status 400/403/404.
 
+## Email Notifications
+
+Uses [Resend](https://resend.com) SDK (`app/services/email.py`). Three notification types:
+
+| Event | Recipients | User preference |
+|-------|-----------|----------------|
+| Bet created | All group members except creator | `email_bet_created` |
+| Wager placed | Bet creator (skip if wagerer = creator) | `email_wager_placed` |
+| Bet resolved | All wagerers (deduplicated), with win/loss/refund messaging | `email_bet_resolved` |
+
+Design:
+- **No-op when `RESEND_API_KEY` is empty** — safe for local dev with zero config
+- All sends wrapped in `try/except` with `logger.exception` — failures never break the main operation
+- Uses `resend.Batch.send()` for multi-recipient emails, `resend.Emails.send()` for single
+- Called inline after `db.commit()` in route handlers (`bets.py`, `wagers.py`)
+- Each email includes a deep link: `{frontend_url}/groups/{group_id}/bets/{bet_id}`
+
 ## Dependencies
 
-Python **3.12** (`.python-version`). Key packages: `fastapi[standard]`, `sqlalchemy>=2.0`, `asyncpg`, `aiosqlite`, `alembic`, `pydantic-settings`, `fastapi-clerk-auth`.
+Python **3.12** (`.python-version`). Key packages: `fastapi[standard]`, `sqlalchemy>=2.0`, `asyncpg`, `aiosqlite`, `alembic`, `pydantic-settings`, `fastapi-clerk-auth`, `resend`.
 
 ## Testing
 

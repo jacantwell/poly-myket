@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     database_url_direct: str = "sqlite:///./dev.db"
     clerk_jwks_url: str = ""
     frontend_url: str = "http://localhost:3000"
+    resend_api_key: str = ""
+    email_from: str = "Poly-Myket <notifications@polymyket.com>"
 
     @model_validator(mode="after")
     def _ensure_async_driver(self) -> "Settings":

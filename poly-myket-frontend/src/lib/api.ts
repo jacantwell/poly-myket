@@ -74,6 +74,16 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  updateEmailPreferences: (data: {
+    email_bet_created?: boolean;
+    email_wager_placed?: boolean;
+    email_bet_resolved?: boolean;
+  }) =>
+    request<User>("/users/me", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
   // Groups
   getGroups: () => request<Group[]>("/groups"),
 

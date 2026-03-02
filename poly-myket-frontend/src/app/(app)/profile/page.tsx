@@ -7,7 +7,9 @@ import { UserAvatar } from "@/components/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { api, ApiClientError } from "@/lib/api";
 import { formatCredits } from "@/lib/bet-utils";
 import { ROUTES } from "@/lib/constants";
@@ -149,6 +151,13 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
+      {/* Email preferences */}
+      <EmailPreferencesCard
+        emailBetCreated={user.email_bet_created}
+        emailWagerPlaced={user.email_wager_placed}
+        emailBetResolved={user.email_bet_resolved}
+      />
+
       {/* Wager history */}
       <Card>
         <CardHeader>
@@ -169,6 +178,61 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+const EMAIL_PREFS = [
+  { key: "email_bet_created", label: "New bets", description: "When someone creates a bet in your group" },
+  { key: "email_wager_placed", label: "Wagers on your bets", description: "When someone wagers on a bet you created" },
+  { key: "email_bet_resolved", label: "Bet results", description: "When a bet you wagered on is resolved" },
+] as const;
+
+function EmailPreferencesCard({
+  emailBetCreated,
+  emailWagerPlaced,
+  emailBetResolved,
+}: {
+  emailBetCreated: boolean;
+  emailWagerPlaced: boolean;
+  emailBetResolved: boolean;
+}) {
+  const [prefs, setPrefs] = useState({
+    email_bet_created: emailBetCreated,
+    email_wager_placed: emailWagerPlaced,
+    email_bet_resolved: emailBetResolved,
+  });
+
+  const handleToggle = async (key: keyof typeof prefs, checked: boolean) => {
+    const prev = prefs[key];
+    setPrefs((p) => ({ ...p, [key]: checked }));
+    try {
+      await api.updateEmailPreferences({ [key]: checked });
+    } catch {
+      setPrefs((p) => ({ ...p, [key]: prev }));
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Email Notifications</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {EMAIL_PREFS.map(({ key, label, description }) => (
+          <div key={key} className="flex items-center justify-between gap-4">
+            <Label htmlFor={key} className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium">{label}</span>
+              <span className="text-xs font-normal text-muted-foreground">{description}</span>
+            </Label>
+            <Switch
+              id={key}
+              checked={prefs[key]}
+              onCheckedChange={(checked) => handleToggle(key, checked)}
+            />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 

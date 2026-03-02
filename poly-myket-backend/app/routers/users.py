@@ -91,6 +91,12 @@ async def update_me(
 ):
     if body.image_url is not None:
         user.image_url = body.image_url
+    if body.email_bet_created is not None:
+        user.email_bet_created = body.email_bet_created
+    if body.email_wager_placed is not None:
+        user.email_wager_placed = body.email_wager_placed
+    if body.email_bet_resolved is not None:
+        user.email_bet_resolved = body.email_bet_resolved
     await db.commit()
     await db.refresh(user)
     return user

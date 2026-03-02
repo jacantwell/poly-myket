@@ -14,7 +14,9 @@ from app.models.bet import Bet, BetStatus
 from app.models.group import GroupMember
 from app.models.user import User
 from app.models.wager import Wager, WagerSide
+from app.models.group import Group
 from app.schemas.wager import WagerCreate, WagerRead
+from app.services.email import send_wager_placed_email
 
 router = APIRouter(tags=["wagers"])
 
@@ -71,4 +73,10 @@ async def create_wager(bet_id: uuid.UUID, body: WagerCreate, user: CurrentUser, 
     )
     wager = result.scalar_one()
     await db.commit()
+
+    # Send email notification to bet creator
+    bet_creator = await db.get(User, bet.created_by)
+    group = await db.get(Group, bet.group_id)
+    send_wager_placed_email(wager, user, bet, bet_creator, group)
+
     return wager

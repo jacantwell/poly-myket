@@ -15,11 +15,17 @@ class UserRead(BaseModel):
     email: str
     display_name: str
     image_url: str | None = None
+    email_bet_created: bool = True
+    email_wager_placed: bool = True
+    email_bet_resolved: bool = True
     created_at: datetime
 
 
 class UserUpdate(BaseModel):
     image_url: str | None = None
+    email_bet_created: bool | None = None
+    email_wager_placed: bool | None = None
+    email_bet_resolved: bool | None = None
 
 
 class ProfileMembership(BaseModel):

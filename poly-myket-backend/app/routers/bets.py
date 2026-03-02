@@ -11,10 +11,11 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.bet import Bet, BetStatus
-from app.models.group import GroupMember, GroupRole
+from app.models.group import Group, GroupMember, GroupRole
 from app.models.user import User
 from app.models.wager import Wager, WagerSide
 from app.schemas.bet import BetCreate, BetRead, BetResolve
+from app.services.email import send_bet_created_emails, send_bet_resolved_emails
 
 router = APIRouter(tags=["bets"])
 
@@ -87,6 +88,17 @@ async def create_bet(group_id: uuid.UUID, body: BetCreate, user: CurrentUser, db
     )
     bet = result.scalar_one()
     await db.commit()
+
+    # Send email notifications
+    group = await db.get(Group, group_id)
+    members_result = await db.execute(
+        select(GroupMember)
+        .options(selectinload(GroupMember.user))
+        .where(GroupMember.group_id == group_id)
+    )
+    members_with_users = members_result.scalars().all()
+    send_bet_created_emails(bet, user, group, list(members_with_users))
+
     return bet
 
 
@@ -155,11 +167,13 @@ async def resolve_bet(bet_id: uuid.UUID, body: BetResolve, user: CurrentUser, db
     winning_wagers = [w for w in bet.wagers if w.side == winning_side]
     total_winning = sum(Decimal(str(w.amount)) for w in winning_wagers)
 
+    payouts: dict[str, Decimal] = {}
     if total_pool > 0:
         if total_winning > 0:
             # Distribute pool proportionally to winners
             for wager in winning_wagers:
                 payout = (Decimal(str(wager.amount)) / total_winning) * total_pool
+                payouts[str(wager.user_id)] = payouts.get(str(wager.user_id), Decimal("0")) + payout
                 wager_member_result = await db.execute(
                     select(GroupMember).where(
                         and_(
@@ -198,6 +212,11 @@ async def resolve_bet(bet_id: uuid.UUID, body: BetResolve, user: CurrentUser, db
     )
     bet = result.scalar_one()
     await db.commit()
+
+    # Send email notifications
+    group = await db.get(Group, bet.group_id)
+    send_bet_resolved_emails(bet, group, list(bet.wagers), winning_side.value, payouts)
+
     return bet
 
 
