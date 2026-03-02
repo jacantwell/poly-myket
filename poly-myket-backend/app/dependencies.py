@@ -1,6 +1,7 @@
 from fastapi import Depends
 from fastapi_clerk_auth import ClerkConfig, ClerkHTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -24,10 +25,15 @@ async def get_current_user(
     user = result.scalar_one_or_none()
 
     if user is None:
-        user = User(clerk_id=clerk_id, email=email or clerk_id, display_name=name)
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        try:
+            user = User(clerk_id=clerk_id, email=email or clerk_id, display_name=name)
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+        except IntegrityError:
+            await db.rollback()
+            result = await db.execute(select(User).where(User.clerk_id == clerk_id))
+            user = result.scalar_one()
     else:
         # Update email/name if they were missing before and are now available
         changed = False
