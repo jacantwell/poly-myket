@@ -21,6 +21,8 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
     op.add_column('bets', sa.Column('resolved_at', sa.DateTime(timezone=True), nullable=True))
+    # Widen the varchar column to fit new longer enum values
+    op.alter_column('bets', 'status', type_=sa.String(length=16), existing_nullable=False)
     # Migrate enum values from resolved_yes/resolved_no to resolved_success/resolved_fail
     op.execute("UPDATE bets SET status = 'resolved_success' WHERE status = 'resolved_yes'")
     op.execute("UPDATE bets SET status = 'resolved_fail' WHERE status = 'resolved_no'")
