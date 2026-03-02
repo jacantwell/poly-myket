@@ -17,6 +17,9 @@ class Group(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     invite_code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    starting_credits: Mapped[float] = mapped_column(
+        Numeric(10, 2), default=0, server_default="0"
+    )
 
     members: Mapped[list["GroupMember"]] = relationship(back_populates="group")
     bets: Mapped[list["Bet"]] = relationship(back_populates="group")  # noqa: F821

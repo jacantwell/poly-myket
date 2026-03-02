@@ -36,4 +36,3 @@ export const GROUP_ROLE_LABELS: Record<GroupRole, string> = {
   member: "Member",
 };
 
-export const DEFAULT_CREDITS = 100;

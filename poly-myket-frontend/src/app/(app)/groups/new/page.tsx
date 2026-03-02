@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { api, ApiClientError } from "@/lib/api";
 import { ROUTES } from "@/lib/constants";
 import type { Group } from "@/lib/types";
@@ -16,6 +17,7 @@ type Phase = "idle" | "submitting" | "created";
 export default function NewGroupPage() {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [startingCredits, setStartingCredits] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [group, setGroup] = useState<Group | null>(null);
 
@@ -28,7 +30,11 @@ export default function NewGroupPage() {
 
     setPhase("submitting");
     try {
-      const created = await api.createGroup({ name: trimmed });
+      const credits = Number(startingCredits);
+      const created = await api.createGroup({
+        name: trimmed,
+        ...(credits > 0 && { starting_credits: credits }),
+      });
       setGroup(created);
       setPhase("created");
     } catch (err) {
@@ -108,13 +114,33 @@ export default function NewGroupPage() {
       <p className="text-muted-foreground">
         Create a new group and invite your friends to start betting.
       </p>
-      <form onSubmit={handleSubmit} className="flex gap-2">
-        <Input
-          placeholder="Group name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          disabled={isSubmitting}
-        />
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="group-name">Group name</Label>
+          <Input
+            id="group-name"
+            placeholder="Group name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={isSubmitting}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="starting-credits">Starting credits</Label>
+          <Input
+            id="starting-credits"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="0"
+            value={startingCredits}
+            onChange={(e) => setStartingCredits(e.target.value)}
+            disabled={isSubmitting}
+          />
+          <p className="text-sm text-muted-foreground">
+            Each member will receive this many credits when they join.
+          </p>
+        </div>
         <Button type="submit" disabled={isSubmitting || !trimmed}>
           {isSubmitting ? "Creating..." : "Create Group"}
         </Button>

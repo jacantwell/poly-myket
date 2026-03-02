@@ -93,7 +93,14 @@ export default function GroupDetailPage({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold">{group.name}</h1>
+        <div>
+          <h1 className="text-2xl font-bold">{group.name}</h1>
+          {group.starting_credits > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Starting credits: {Number(group.starting_credits).toFixed(0)}
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"

@@ -56,12 +56,32 @@ async def _get_membership(
 
 @router.post("", response_model=GroupRead)
 async def create_group(body: GroupCreate, user: CurrentUser, db: DB):
-    group = Group(name=body.name, invite_code=_generate_invite_code())
+    group = Group(
+        name=body.name,
+        invite_code=_generate_invite_code(),
+        starting_credits=body.starting_credits,
+    )
     db.add(group)
     await db.flush()
 
-    member = GroupMember(group_id=group.id, user_id=user.id, role=GroupRole.ADMIN)
+    member = GroupMember(
+        group_id=group.id,
+        user_id=user.id,
+        role=GroupRole.ADMIN,
+        credit_balance=body.starting_credits,
+    )
     db.add(member)
+
+    if body.starting_credits > 0:
+        await db.flush()
+        adjustment = CreditAdjustment(
+            member_id=member.id,
+            adjusted_by=user.id,
+            amount=body.starting_credits,
+            reason="Starting credits",
+        )
+        db.add(adjustment)
+
     await db.commit()
     await db.refresh(group)
     return group
@@ -82,8 +102,24 @@ async def join_group(body: GroupJoin, user: CurrentUser, db: DB):
     if existing.scalar_one_or_none():
         return group
 
-    member = GroupMember(group_id=group.id, user_id=user.id, role=GroupRole.MEMBER)
+    member = GroupMember(
+        group_id=group.id,
+        user_id=user.id,
+        role=GroupRole.MEMBER,
+        credit_balance=group.starting_credits,
+    )
     db.add(member)
+
+    if group.starting_credits > 0:
+        await db.flush()
+        adjustment = CreditAdjustment(
+            member_id=member.id,
+            adjusted_by=user.id,
+            amount=float(group.starting_credits),
+            reason="Starting credits",
+        )
+        db.add(adjustment)
+
     await db.commit()
     return group
 

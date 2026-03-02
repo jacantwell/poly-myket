@@ -12,6 +12,7 @@ export interface Group {
   id: string;
   name: string;
   invite_code: string;
+  starting_credits: number;
   created_at: string;
 }
 
@@ -74,6 +75,7 @@ export interface Wager {
 
 export interface CreateGroupRequest {
   name: string;
+  starting_credits?: number;
 }
 
 export interface JoinGroupRequest {
