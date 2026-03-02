@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "poly-myket-backend/alembic/**"
+  workflow_dispatch:
 
 jobs:
   migrate:
