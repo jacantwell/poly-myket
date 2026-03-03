@@ -11,12 +11,19 @@ Social betting app where friends bet on each other's real-life commitments using
 cd poly-myket-backend && uv sync
 cp .env.example .env  # then fill in values
 
-# Frontend
-cd poly-myket-frontend && bun install
+# Web Frontend
+cd poly-myket-frontend && npm install
 cp .env.local.example .env.local  # then fill in values
 
-# Run everything
-make dev  # backend :6767 + frontend :6969
+# Mobile App
+cd poly-myket-app && npm install
+cp .env.example .env  # then fill in values
+
+# Run web dev environment
+make dev          # backend :6767 + frontend :6969
+
+# Run mobile dev environment
+make dev-mobile   # backend :6767 + expo dev server
 ```
 
 ## Monorepo Structure
@@ -37,17 +44,35 @@ poly-myket/
 │   ├── vercel.json              # Vercel deployment config
 │   └── pyproject.toml           # Python dependencies (uv)
 │
-├── poly-myket-frontend/         # Next.js 16 TypeScript app
+├── poly-myket-shared/           # Shared TypeScript package
+│   └── src/
+│       ├── types.ts             # Domain types (User, Group, Bet, Wager, etc.)
+│       ├── api.ts               # Typed fetch API client (injectable URL + token)
+│       ├── bet-utils.ts         # Odds calculation + credit formatting
+│       └── constants.ts         # Status labels, role labels, color mappings
+│
+├── poly-myket-frontend/         # Next.js 16 TypeScript web app
 │   ├── src/
 │   │   ├── app/                 # Next.js App Router pages
 │   │   │   ├── (auth)/          # Public auth pages (sign-in, sign-up)
 │   │   │   ├── (app)/           # Protected routes (groups, bets, profile)
 │   │   │   └── invite/[code]/   # Public invite link handler
-│   │   ├── components/          # UI components
-│   │   ├── lib/                 # API client, types, utils
+│   │   ├── components/          # UI components (ShadCN + custom)
+│   │   ├── lib/                 # Re-exports from @poly-myket/shared + web-only utils
 │   │   └── proxy.ts             # Clerk middleware (route protection)
-│   ├── package.json             # Node dependencies (bun)
+│   ├── package.json
 │   └── next.config.ts
+│
+├── poly-myket-app/              # Expo + React Native mobile app
+│   ├── app/                     # Expo Router file-based routes
+│   │   ├── (auth)/              # Sign-in (Google OAuth)
+│   │   ├── (tabs)/              # Bottom tabs (Markets + Profile)
+│   │   ├── groups/              # Group detail, bet detail, forms
+│   │   └── invite/[code]/       # Deep link invite handler
+│   ├── components/              # RN Paper components (BetCard, WagerForm, etc.)
+│   ├── lib/                     # Theme, routes, Clerk token cache
+│   ├── app.json                 # Expo config (scheme, deep links)
+│   └── metro.config.js          # Monorepo config (watches shared package)
 │
 ├── Makefile                     # Dev commands
 ├── .github/workflows/           # CI/CD (migration runner)
@@ -59,11 +84,17 @@ poly-myket/
 | Target | Command | Description |
 |--------|---------|-------------|
 | `make backend` | `uvicorn app.main:app --reload --port 6767` | Backend dev server |
-| `make frontend` | `npm run dev -- --port 6969` | Frontend dev server |
-| `make dev` | Runs both concurrently | Full dev environment |
+| `make frontend` | `npm run dev -- --port 6969` | Web frontend dev server |
+| `make dev` | Runs backend + frontend concurrently | Full web dev environment |
+| `make app` | `expo start` | Mobile app dev server |
+| `make app-ios` | `expo run:ios` | Run mobile on iOS Simulator |
+| `make app-android` | `expo run:android` | Run mobile on Android Emulator |
+| `make dev-mobile` | Runs backend + expo concurrently | Full mobile dev environment |
 | `make migrate` | `alembic upgrade head` | Apply DB migrations |
 | `make reset-db` | Deletes `dev.db` + migrate | Reset local database |
-| `make lint-frontend` | `tsc --noEmit && eslint` | Typecheck + lint frontend |
+| `make lint-shared` | `tsc --noEmit` | Typecheck shared package |
+| `make lint-frontend` | `tsc --noEmit && eslint` | Typecheck + lint web frontend |
+| `make lint-app` | `tsc --noEmit` | Typecheck mobile app |
 
 ---
 
@@ -87,7 +118,8 @@ poly-myket/
 User → Google OAuth → Clerk → JWT (RS256) → Frontend getToken() → Authorization: Bearer <jwt> → Backend JWKS verification
 ```
 
-- **Frontend**: `@clerk/nextjs` — provides `useAuth()`, `useUser()`, `UserButton`, middleware
+- **Web Frontend**: `@clerk/nextjs` — provides `useAuth()`, `useUser()`, `UserButton`, middleware
+- **Mobile App**: `@clerk/clerk-expo` — `useOAuth()`, `useAuth()`, `expo-secure-store` token cache
 - **Backend**: `fastapi-clerk-auth` — `ClerkHTTPBearer` validates JWT via Clerk JWKS endpoint
 - **User sync**: First API call auto-creates user in DB from JWT claims (`clerk_id`, `email`, `name`)
 - **Token lifecycle**: Short-lived (~60s), Clerk auto-refreshes, no localStorage
@@ -108,7 +140,7 @@ CLERK_JWKS_URL=https://....clerk.accounts.dev/.well-known/jwks.json
 FRONTEND_URL=http://localhost:6969             # CORS origin
 ```
 
-**Frontend** (`.env.local`):
+**Web Frontend** (`.env.local`):
 ```
 NEXT_PUBLIC_API_URL=http://localhost:6767
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
@@ -117,6 +149,12 @@ NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
 NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/groups
 NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/groups
+```
+
+**Mobile App** (`.env`):
+```
+EXPO_PUBLIC_API_URL=http://localhost:6767
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
 ```
 
 ---
@@ -344,7 +382,7 @@ All errors follow:
 
 ---
 
-## Frontend Routes
+## Web Frontend Routes
 
 | Path | Auth | Page | Key API Calls |
 |------|------|------|--------------|
@@ -362,7 +400,23 @@ All errors follow:
 
 *`/invite/[code]` redirects unauthenticated users to sign-up, then back to the invite link.
 
-### Frontend API Client (`src/lib/api.ts`)
+### Mobile App Routes
+
+| Route | Auth | Screen | Key API Calls |
+|-------|------|--------|--------------|
+| `/(auth)/sign-in` | No | Google OAuth sign-in | — |
+| `/(tabs)/` | Yes | Groups list (Markets tab) | `getGroups()`, `getBets()` per group |
+| `/(tabs)/profile` | Yes | User profile, stats, preferences | `getMyProfile()` |
+| `/groups/new` | Yes | Create group form | `createGroup()` |
+| `/groups/join` | Yes | Join by invite code | `joinGroup()` |
+| `/groups/[groupId]` | Yes | Group detail (Bets/Members/Admin tabs) | `getGroup()`, `getBets()` |
+| `/groups/[groupId]/bets/new` | Yes | Create bet form | `getGroup()`, `getMe()`, `createBet()` |
+| `/groups/[groupId]/bets/[betId]` | Yes | Bet detail, wager form, resolve/cancel | `getBet()`, `placeWager()`, `resolveBet()`, `cancelBet()` |
+| `/invite/[code]` | No* | Deep link — auto-joins group | `joinGroup()` |
+
+Deep linking: `polymyket://invite/CODE` (custom scheme) and `https://polymyket.vercel.app/invite/CODE` (universal links).
+
+### API Client (`@poly-myket/shared`)
 
 ```typescript
 // Users
@@ -392,7 +446,9 @@ api.getCreditAdjustments(groupId)              → CreditAdjustment[]
 api.promoteMember(groupId, { member_id })      → GroupMember
 ```
 
-Auth token is injected automatically via `ApiProvider` which calls `setTokenGetter(() => getToken())` from Clerk's `useAuth()`.
+Auth token is injected automatically:
+- **Web**: `ApiProvider` calls `setTokenGetter(() => getToken())` from `@clerk/nextjs`
+- **Mobile**: `ApiSetup` component calls `setTokenGetter(() => getToken())` from `@clerk/clerk-expo`
 
 ---
 
@@ -424,14 +480,17 @@ noPrice  = noAmount / totalVolume
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
-| Frontend | Next.js + TypeScript | 16.1.6 |
-| UI | ShadCN/UI (New York) + Tailwind CSS 4 | — |
+| Web Frontend | Next.js + TypeScript | 16.1.6 |
+| Web UI | ShadCN/UI (New York) + Tailwind CSS 4 | — |
+| Mobile App | Expo + React Native | SDK 54 |
+| Mobile UI | React Native Paper v5 (MD3) | — |
+| Shared Package | @poly-myket/shared (types, API client, utils) | — |
 | Backend | FastAPI (async) | latest |
 | ORM | SQLAlchemy 2.0+ | async |
 | DB (dev) | SQLite | aiosqlite |
 | DB (prod) | PostgreSQL (Neon) | asyncpg |
-| Auth | Clerk | @clerk/nextjs 6.39 |
+| Auth | Clerk | @clerk/nextjs, @clerk/clerk-expo |
 | Migrations | Alembic | — |
-| Package Mgmt | uv (Python), bun (Node) | — |
+| Package Mgmt | uv (Python), npm (Node) | — |
 | Deployment | Vercel (serverless) | — |
 | CI/CD | GitHub Actions | — |

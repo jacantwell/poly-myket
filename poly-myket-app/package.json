@@ -1,0 +1,41 @@
+{
+  "name": "poly-myket-app",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "ios": "expo run:ios",
+    "android": "expo run:android",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clerk/clerk-expo": "^2.19.30",
+    "@expo/vector-icons": "^15.0.3",
+    "@react-native-community/datetimepicker": "8.4.4",
+    "expo": "^54.0.0",
+    "expo-auth-session": "~7.0.10",
+    "expo-clipboard": "~8.0.8",
+    "expo-constants": "~18.0.13",
+    "expo-font": "~14.0.11",
+    "expo-linking": "~8.0.11",
+    "expo-router": "~6.0.23",
+    "expo-secure-store": "~15.0.8",
+    "expo-status-bar": "~3.0.9",
+    "expo-web-browser": "~15.0.10",
+    "poly-myket-shared": "^0.1.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-paper": "^5.15.0",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-toast-message": "^2.3.3",
+    "react-native-vector-icons": "^10.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.10",
+    "@types/react-native-vector-icons": "^6.4.0",
+    "typescript": "^5.3.0"
+  }
+}
