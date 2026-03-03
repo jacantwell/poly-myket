@@ -23,7 +23,7 @@ jobs:
           cache: npm
           cache-dependency-path: poly-myket-app/package-lock.json
 
-      - run: npm ci
+      - run: npm install
 
       - uses: expo/expo-github-action@v8
         with:
