@@ -4,10 +4,12 @@ Social betting app where friends bet on each other's real-life commitments using
 
 ## Project Structure
 
-Monorepo with two independent apps — each has its own `CLAUDE.md` with app-specific conventions:
+Monorepo with three apps and a shared package — each has its own `CLAUDE.md` with app-specific conventions:
 
 - `poly-myket-backend/` — Python FastAPI API (see `poly-myket-backend/CLAUDE.md`)
 - `poly-myket-frontend/` — Next.js 16 TypeScript frontend (see `poly-myket-frontend/CLAUDE.md`)
+- `poly-myket-app/` — Expo + React Native mobile app (see `poly-myket-app/CLAUDE.md`)
+- `poly-myket-shared/` — Shared TypeScript package published to npm (types, API client, utilities)
 
 ## Dev Commands (Makefile)
 
@@ -15,9 +17,16 @@ Monorepo with two independent apps — each has its own `CLAUDE.md` with app-spe
 make backend        # uvicorn on port 6767 with hot reload
 make frontend       # next.js on port 6969 with hot reload
 make dev            # runs both concurrently
+make app            # expo dev server for mobile
+make app-ios        # run on iOS Simulator
+make app-android    # run on Android Emulator
+make dev-mobile     # backend + expo concurrently
 make migrate        # alembic upgrade head
 make reset-db       # delete dev.db + recreate from migrations
+make build-shared   # compile shared package to dist/
+make lint-shared    # typecheck shared package
 make lint-frontend  # typecheck + ESLint (always use this, not npx tsc)
+make lint-app       # typecheck mobile app
 ```
 
 ## Infrastructure
@@ -35,6 +44,7 @@ User → Google OAuth → Clerk → JWT (RS256) → Frontend getToken() → Auth
 ```
 
 - **Frontend**: `@clerk/nextjs` — `useAuth()`, `useUser()`, `UserButton`, middleware
+- **Mobile**: `@clerk/clerk-expo` — `useOAuth()`, `useAuth()`, `expo-secure-store` token cache
 - **Backend**: `fastapi-clerk-auth` — validates JWT via Clerk JWKS endpoint
 - **User sync**: First API call auto-creates user in DB from JWT claims (`clerk_id`, `email`, `name`)
 - **Token lifecycle**: Short-lived (~60s), Clerk auto-refreshes, no localStorage
@@ -91,6 +101,8 @@ All tables: UUID primary keys, `created_at`/`updated_at` timestamp mixins. Enums
 **Backend** (`.env`): `DATABASE_URL`, `DATABASE_URL_DIRECT`, `CLERK_JWKS_URL`, `FRONTEND_URL`, `RESEND_API_KEY`, `EMAIL_FROM`
 
 **Frontend** (`.env.local`): `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, Clerk route URLs
+
+**Mobile** (`.env`): `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`
 
 ## Testing
 
