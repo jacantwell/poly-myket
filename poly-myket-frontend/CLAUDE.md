@@ -36,11 +36,11 @@ src/
 │   ├── bet-card.tsx, group-bets-section.tsx, member-select.tsx,
 │   │   user-avatar.tsx, wager-form.tsx
 └── lib/
-    ├── api.ts                  # Fetch-based API client (typed methods)
+    ├── api.ts                  # Re-exports from poly-myket-shared + sets API URL
     ├── api-provider.tsx        # Bridges Clerk auth → API client
-    ├── types.ts                # TypeScript interfaces (mirrors backend models)
-    ├── constants.ts            # Routes, status labels, badge variants
-    ├── bet-utils.ts            # Odds calculation + credit formatting
+    ├── types.ts                # Re-exports from poly-myket-shared
+    ├── constants.ts            # Re-exports shared labels + web-only ROUTES, BET_STATUS_VARIANT
+    ├── bet-utils.ts            # Re-exports from poly-myket-shared
     └── utils.ts                # cn() class composition helper
 ```
 
@@ -116,9 +116,20 @@ Token bridge: `ApiProvider` calls `setTokenGetter(() => getToken())` to wire Cle
 2. After sign-up → Clerk redirects back
 3. Page auto-calls `api.joinGroup()` and redirects to group
 
+## Shared Package (`poly-myket-shared`)
+
+Types, API client, and utilities live in `poly-myket-shared/` and are published to npm as `poly-myket-shared`. The frontend `lib/` files are thin re-export wrappers:
+
+- `types.ts` → `export * from "poly-myket-shared"`
+- `api.ts` → calls `setApiUrl()` with the Next.js env var, then re-exports `api`, `ApiClientError`, `setTokenGetter`
+- `bet-utils.ts` → re-exports `calculateOdds`, `formatCredits`, `Odds`
+- `constants.ts` → re-exports `BET_STATUS_LABELS`, `GROUP_ROLE_LABELS` from shared; keeps web-specific `ROUTES` and `BET_STATUS_VARIANT` locally
+
+The package is pre-compiled — no `transpilePackages` or webpack aliases needed.
+
 ## API Client (`src/lib/api.ts`)
 
-Plain fetch wrapper, no caching/retry. Errors throw `ApiClientError` with `status` and `message`. Routes centralized in `src/lib/constants.ts` (`ROUTES.groups`, `ROUTES.group(id)`, etc.). Includes `updateEmailPreferences()` for toggling notification settings via `PATCH /users/me`.
+Re-exports the typed fetch wrapper from `poly-myket-shared`. Errors throw `ApiClientError` with `status` and `message`. Routes centralized in `src/lib/constants.ts` (`ROUTES.groups`, `ROUTES.group(id)`, etc.). Includes `updateEmailPreferences()` for toggling notification settings via `PATCH /users/me`.
 
 ## Email Preferences UI
 
