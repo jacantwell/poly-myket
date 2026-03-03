@@ -1,0 +1,23 @@
+name: Backend Tests
+
+on:
+  pull_request:
+    paths:
+      - "poly-myket-backend/**"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: poly-myket-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - run: uv sync --frozen --extra test
+
+      - run: uv run pytest -v

@@ -1,4 +1,4 @@
-.PHONY: backend frontend dev migrate reset-db build-shared lint-shared lint-frontend app app-ios app-android lint-app dev-mobile build-app
+.PHONY: backend frontend dev migrate reset-db build-shared lint-shared lint-frontend app app-ios app-android lint-app dev-mobile build-app test-backend
 
 backend:
 	cd poly-myket-backend && uv run uvicorn app.main:app --reload --port 6767
@@ -39,6 +39,9 @@ lint-app:
 
 dev-mobile:
 	$(MAKE) backend & $(MAKE) app & wait
+
+test-backend:
+	cd poly-myket-backend && uv run pytest -v
 
 build-app:
 	cd poly-myket-app && npx eas build --platform all --profile preview
