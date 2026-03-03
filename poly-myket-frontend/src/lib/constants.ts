@@ -1,4 +1,5 @@
-import type { BetStatus, GroupRole } from "./types";
+export { BET_STATUS_LABELS, GROUP_ROLE_LABELS } from "poly-myket-shared";
+import type { BetStatus } from "poly-myket-shared";
 
 export const ROUTES = {
   signIn: "/sign-in",
@@ -14,13 +15,6 @@ export const ROUTES = {
   profile: "/profile",
 } as const;
 
-export const BET_STATUS_LABELS: Record<BetStatus, string> = {
-  open: "Open",
-  resolved_success: "Completed",
-  resolved_fail: "Failed",
-  cancelled: "Cancelled",
-};
-
 export const BET_STATUS_VARIANT: Record<
   BetStatus,
   "default" | "secondary" | "destructive" | "outline"
@@ -30,9 +24,3 @@ export const BET_STATUS_VARIANT: Record<
   resolved_fail: "destructive",
   cancelled: "outline",
 };
-
-export const GROUP_ROLE_LABELS: Record<GroupRole, string> = {
-  admin: "Admin",
-  member: "Member",
-};
-
