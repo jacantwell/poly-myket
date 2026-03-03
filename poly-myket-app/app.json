@@ -2,6 +2,7 @@
   "expo": {
     "name": "Poly-Myket",
     "slug": "poly-myket",
+    "owner": "jacantwell",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "polymyket",
@@ -45,6 +46,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "81372ba6-15dc-45d9-b7f9-2dafa0af8eae"
+      }
     }
   }
 }
